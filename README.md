@@ -48,7 +48,7 @@ The device must reach the host, for example over the same network, or upload `bu
 
 **Steps to reproduce**
 
-1. Open https://bvg-gynzy.github.io/flutter_powervr_mipmap_repro/3.47.5/, or build https://github.com/BvG-Gynzy/flutter_powervr_mipmap_repro with Flutter 3.47.5 (`flutter build web`, or `./build.sh` for all variants).
+1. Open https://bvg-gynzy.github.io/flutter_powervr_mipmap_repro/3.47.5/ (the app first generates six 3840×1980 PNG backgrounds, so it takes a while to load, longer on a slow Chromebook), or build https://github.com/BvG-Gynzy/flutter_powervr_mipmap_repro with Flutter 3.47.5 (`flutter build web`, or `./build.sh` for all variants).
 2. Open it in Chrome on a ChromeOS device with a PowerVR Rogue GPU (we used an Asus C202XA, PowerVR Rogue GX6250).
 3. Leave it running while it cycles through its 3840×1980 backgrounds.
 
