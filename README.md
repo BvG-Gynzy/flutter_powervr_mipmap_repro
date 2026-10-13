@@ -63,6 +63,31 @@ The whole ChromeOS screen, including the system UI, flashes black and the app cr
 - The same app built with 3.41.7 works.
 - With 3.47.5 it also works when `drawImageRectOptions` is patched to pass `MipmapMode.None` (`?noMipmaps=1`).
 
+**Code sample**
+
+The full app is https://github.com/BvG-Gynzy/flutter_powervr_mipmap_repro ([`lib/main.dart`](https://github.com/BvG-Gynzy/flutter_powervr_mipmap_repro/blob/main/lib/main.dart), [`web/flutter_bootstrap.js`](https://github.com/BvG-Gynzy/flutter_powervr_mipmap_repro/blob/main/web/flutter_bootstrap.js)). It generates six 3840×1980 PNG backgrounds and shows one full-screen, switching every second. The part that matters:
+
+```dart
+Image.memory(
+  pngBytes, // 3840×1980 PNG
+  fit: BoxFit.cover, // downscaled to the 1366×768 screen
+  filterQuality: FilterQuality.medium, // the default; becomes MipmapMode.Linear
+  gaplessPlayback: true,
+)
+```
+
+<details><summary>Workaround used for <code>?noMipmaps=1</code> (web/flutter_bootstrap.js)</summary>
+
+```js
+const canvasKit = await window.flutterCanvasKitLoaded;
+const drawImageRectOptions = canvasKit.Canvas.prototype.drawImageRectOptions;
+canvasKit.Canvas.prototype.drawImageRectOptions = function (image, src, dst, filterMode, mipmapMode, paint) {
+  return drawImageRectOptions.call(this, image, src, dst, filterMode, canvasKit.MipmapMode.None, paint);
+};
+```
+
+</details>
+
 **Analysis**
 
 - In 3.41, `CkCanvas.drawImageRect` was drawn with `kStrict_SrcRectConstraint`, which made Skia ignore the mipmap mode.
@@ -77,3 +102,35 @@ The whole ChromeOS screen, including the system UI, flashes black and the app cr
 - ChromeOS 16503.95.0, Chrome 144.0.7559.262
 - WebGL renderer: `ANGLE (Imagination Technologies, PowerVR Rogue GX6250, OpenGL ES 3.2)`
 - Flutter 3.47.5 (bad) vs 3.41.7 (good), CanvasKit renderer
+
+**Flutter Doctor output**
+
+<details><summary>flutter doctor -v (web-relevant sections)</summary>
+
+```console
+[✓] Flutter (Channel stable, 3.47.5, on macOS 26.6.2 25G83
+    darwin-arm64, locale en-NL) [2.8s]
+    • Flutter version 3.47.5 on channel stable at
+      /Users/basvangestel/.asdf/installs/flutter/3.47.5
+    • Upstream repository https://github.com/flutter/flutter.git
+    • Framework revision 6a19cca564 (4 weeks ago), 2026-09-17
+      14:13:22 -0400
+    • Engine revision af7e796e16
+    • Dart version 3.13.4
+    • DevTools version 2.60.0
+    • Feature flags: enable-web, enable-linux-desktop,
+      enable-macos-desktop, enable-windows-desktop, enable-android,
+      enable-ios, cli-animations, enable-native-assets,
+      enable-record-use, enable-swift-package-manager,
+      omit-legacy-version-file, enable-lldb-debugging,
+      enable-uiscene-migration
+
+[✓] Chrome - develop for the web [7ms]
+    • Chrome at /Applications/Google
+      Chrome.app/Contents/MacOS/Google Chrome
+
+[✓] Network resources [267ms]
+    • All expected network resources are available.
+```
+
+</details>
