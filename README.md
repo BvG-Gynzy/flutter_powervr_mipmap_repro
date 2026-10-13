@@ -9,6 +9,10 @@ The app shows full-screen 3840×1980 PNG backgrounds with `Image.memory` (defaul
 - **Since 3.47, every downscaled image gets a mipmapped texture.** CanvasKit's `drawImageRect` now uses `kFast_SrcRectConstraint` instead of `kStrict_SrcRectConstraint` (Skia `dae8778ca4`, rolled in Flutter 3.47). With the strict constraint, Skia ignored the mipmap mode. Now every `FilterQuality.medium` image drawn smaller than its size gets a GPU-generated mipmapped copy of its texture. For a 3840×1980 image that is about 39 MB, briefly about 68 MB.
 - **On PowerVR Rogue, that extra memory seems to cause WebGL context losses.** On ChromeOS, Chrome handles a context loss on these GPUs by restarting the GPU process (`exit_on_context_lost`). That process also draws the system UI, so the whole screen goes black.
 
+## Live demo
+
+https://bvg-gynzy.github.io/flutter_powervr_mipmap_repro/ links all four variants below.
+
 ## Build and run
 
 `build.sh` builds the app with both Flutter versions. It expects them as asdf installs in `~/.asdf/installs/flutter/<version>`; edit the path if yours differ.
@@ -44,7 +48,7 @@ The device must reach the host, for example over the same network, or upload `bu
 
 **Steps to reproduce**
 
-1. Build https://github.com/BvG-Gynzy/flutter_powervr_mipmap_repro with Flutter 3.47.5 (`flutter build web`, or `./build.sh` for all variants).
+1. Open https://bvg-gynzy.github.io/flutter_powervr_mipmap_repro/3.47.5/, or build https://github.com/BvG-Gynzy/flutter_powervr_mipmap_repro with Flutter 3.47.5 (`flutter build web`, or `./build.sh` for all variants).
 2. Open it in Chrome on a ChromeOS device with a PowerVR Rogue GPU (we used an Asus C202XA, PowerVR Rogue GX6250).
 3. Leave it running while it cycles through its 3840×1980 backgrounds.
 
