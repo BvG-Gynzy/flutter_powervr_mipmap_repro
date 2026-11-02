@@ -40,7 +40,7 @@ function wrapGenerateMipmap() {
     context.prototype.generateMipmap = function (target) {
       window.__repro_generate_mipmap_calls++;
       run.generateMipmapCalls++;
-      saveRun();
+      logEvent(`generateMipmap call ${run.generateMipmapCalls}`);
       if (mode === "skip") {
         return;
       }
@@ -54,7 +54,7 @@ function wrapGenerateMipmap() {
       context.prototype.texStorage2D = function (target, levels, internalFormat, width, height) {
         if (levels > 1) {
           run.mipmappedAllocations.push(`${width}x${height}, ${levels} levels`);
-          saveRun();
+          logEvent(`mipmapped allocation ${width}x${height}, ${levels} levels`);
         }
         return texStorage2D.apply(this, arguments);
       };
@@ -63,43 +63,84 @@ function wrapGenerateMipmap() {
 }
 
 /**
- * Records this page load in `localStorage` as it goes, so the numbers survive
- * the GPU process restart that blacks out the screen. The previous page load's
- * record is published as `window.__repro_previous_run` (JSON) for the panel.
+ * Records this page load in `localStorage` as it goes, so the record survives
+ * the GPU process restart that blacks out the screen. Keeps the last
+ * `maxRuns` page loads under `repro_runs`; the index page lists them. The
+ * previous page load is also published as `window.__repro_previous_run`
+ * (JSON) for the app's panel.
  */
-const runStorageKey = "repro_run";
+const runsStorageKey = "repro_runs";
+const maxRuns = 10;
+const pageStart = performance.now();
 const run = {
   url: window.location.pathname + window.location.search,
   startedAt: new Date().toISOString(),
   stage: "loading",
   generateMipmapCalls: 0,
   mipmappedAllocations: [],
+  events: [],
 };
+let runs = [];
 
 function saveRun() {
   try {
-    localStorage.setItem(runStorageKey, JSON.stringify(run));
+    localStorage.setItem(runsStorageKey, JSON.stringify(runs));
   } catch (e) {
-    // Storage unavailable: the panel then has no previous run to show.
+    // Storage unavailable or full: the run is simply not recorded.
   }
+}
+
+function logEvent(event) {
+  run.events.push(`${((performance.now() - pageStart) / 1000).toFixed(1)}s ${event}`);
+  saveRun();
 }
 
 function startRun() {
   try {
-    window.__repro_previous_run = localStorage.getItem(runStorageKey);
+    runs = JSON.parse(localStorage.getItem(runsStorageKey) || "[]");
   } catch (e) {
-    window.__repro_previous_run = null;
+    runs = [];
   }
-  saveRun();
+  window.__repro_previous_run = runs.length ? JSON.stringify(runs[runs.length - 1]) : null;
+  runs.push(run);
+  runs = runs.slice(-maxRuns);
+  logEvent("page loaded");
 }
 
 /** Called by the app to record how far it got. */
 window.__repro_set_stage = function (stage) {
   run.stage = stage;
-  saveRun();
+  logEvent(stage);
 };
 
+/**
+ * Logs `webglcontextlost`/`webglcontextrestored` on every canvas that gets a
+ * WebGL context, including CanvasKit's OffscreenCanvases.
+ */
+function watchContextLoss() {
+  const watched = new WeakSet();
+  for (const canvasClass of [window.HTMLCanvasElement, window.OffscreenCanvas]) {
+    if (!canvasClass) {
+      continue;
+    }
+    const getContext = canvasClass.prototype.getContext;
+    canvasClass.prototype.getContext = function (type, ...rest) {
+      const context = getContext.call(this, type, ...rest);
+      if (context && String(type).includes("webgl") && !watched.has(this)) {
+        watched.add(this);
+        const canvas = this;
+        canvas.addEventListener("webglcontextlost", () =>
+          logEvent(`WebGL context lost (${canvas.width}x${canvas.height} ${canvasClass.name})`));
+        canvas.addEventListener("webglcontextrestored", () =>
+          logEvent(`WebGL context restored (${canvas.width}x${canvas.height} ${canvasClass.name})`));
+      }
+      return context;
+    };
+  }
+}
+
 startRun();
+watchContextLoss();
 wrapGenerateMipmap();
 
 _flutter.loader.load({

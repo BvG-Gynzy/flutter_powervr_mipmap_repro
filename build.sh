@@ -26,6 +26,28 @@ done
     echo "<li>Flutter $version: <a href=\"$version/\">default</a> · <a href=\"$version/?noMipmaps=1\">mipmaps disabled</a> · <a href=\"$version/?mipGeneration=skip\">generateMipmap skipped (A)</a> · <a href=\"$version/?mipGeneration=finish\">gl.finish() before generateMipmap (B)</a></li>"
   done
   echo '</ul><p>Add <code>&amp;cycle=0</code> (or <code>?cycle=0</code>) to stay on the first background.</p>'
+  cat <<'HTML'
+<h2>Recorded runs on this device</h2>
+<p>Each page load records what it did in <code>localStorage</code>, so it survives a black screen. Newest first. <button id="clear">Clear</button></p>
+<pre id="runs">No runs recorded.</pre>
+<script>
+  function show() {
+    let runs = [];
+    try { runs = JSON.parse(localStorage.getItem("repro_runs") || "[]"); } catch (e) {}
+    if (runs.length) {
+      document.getElementById("runs").textContent = runs.slice().reverse().map((run) =>
+        `${run.startedAt}  ${run.url}\n` +
+        `  generateMipmap calls: ${run.generateMipmapCalls}, mipmapped allocations: ${run.mipmappedAllocations.length}\n` +
+        (run.events || []).map((event) => `  ${event}`).join("\n")).join("\n\n");
+    }
+  }
+  document.getElementById("clear").onclick = () => {
+    try { localStorage.removeItem("repro_runs"); } catch (e) {}
+    location.reload();
+  };
+  show();
+</script>
+HTML
 } > build/site/index.html
 touch build/site/.nojekyll
 
