@@ -41,23 +41,31 @@ class ReproPage extends StatefulWidget {
 class _ReproPageState extends State<ReproPage> {
   final String _webGlRenderer = _readWebGlRenderer();
   final bool _mipmapsDisabled = _readMipmapsDisabled();
+  final String _mipGeneration = _readMipGeneration();
 
   final List<Uint8List> _images = [];
   int _current = 0;
   int _layers = 1;
   FilterQuality _filterQuality = FilterQuality.medium;
-  bool _cycling = true;
+  bool _cycling = Uri.base.queryParameters['cycle'] != '0';
+  int _backgroundsShown = 0;
   Timer? _cycleTimer;
+  Timer? _panelRefreshTimer;
 
   @override
   void initState() {
     super.initState();
     _generateImages();
+    _panelRefreshTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => setState(() {}),
+    );
   }
 
   @override
   void dispose() {
     _cycleTimer?.cancel();
+    _panelRefreshTimer?.cancel();
     super.dispose();
   }
 
@@ -105,6 +113,11 @@ class _ReproPageState extends State<ReproPage> {
                   ? 'drawImageRectOptions patched: MipmapMode.None'
                   : 'drawImageRectOptions unpatched',
             ),
+            Text('generateMipmap: $_mipGeneration'),
+            Text(
+              'Backgrounds shown: $_backgroundsShown · '
+              'generateMipmap calls: ${_readGenerateMipmapCalls()}',
+            ),
             const SizedBox(height: 8),
             SegmentedButton<FilterQuality>(
               segments: [
@@ -149,6 +162,7 @@ class _ReproPageState extends State<ReproPage> {
       }
       setState(() => _images.add(bytes));
     }
+    setState(() => _backgroundsShown = 1);
     _setCycling(_cycling);
   }
 
@@ -157,7 +171,10 @@ class _ReproPageState extends State<ReproPage> {
     _cycleTimer = cycling
         ? Timer.periodic(
             const Duration(seconds: 1),
-            (_) => setState(() => _current = (_current + 1) % _imageCount),
+            (_) => setState(() {
+              _current = (_current + 1) % _imageCount;
+              _backgroundsShown++;
+            }),
           )
         : null;
     setState(() => _cycling = cycling);
@@ -239,4 +256,18 @@ bool _readMipmapsDisabled() {
           .getProperty<JSBoolean?>('__repro_mipmaps_disabled'.toJS)
           ?.toDart ??
       false;
+}
+
+String _readMipGeneration() {
+  return web.window
+          .getProperty<JSString?>('__repro_mip_generation'.toJS)
+          ?.toDart ??
+      'default';
+}
+
+int _readGenerateMipmapCalls() {
+  return web.window
+          .getProperty<JSNumber?>('__repro_generate_mipmap_calls'.toJS)
+          ?.toDartInt ??
+      0;
 }

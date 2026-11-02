@@ -23,9 +23,9 @@ done
 {
   echo '<!doctype html><meta charset="utf-8"><title>PowerVR mipmap repro</title><ul>'
   for version in "${versions[@]}"; do
-    echo "<li><a href=\"$version/\">Flutter $version</a> · <a href=\"$version/?noMipmaps=1\">Flutter $version, mipmaps disabled</a></li>"
+    echo "<li>Flutter $version: <a href=\"$version/\">default</a> · <a href=\"$version/?noMipmaps=1\">mipmaps disabled</a> · <a href=\"$version/?mipGeneration=skip\">generateMipmap skipped (A)</a> · <a href=\"$version/?mipGeneration=finish\">gl.finish() before generateMipmap (B)</a></li>"
   done
-  echo '</ul>'
+  echo '</ul><p>Add <code>&amp;cycle=0</code> (or <code>?cycle=0</code>) to stay on the first background.</p>'
 } > build/site/index.html
 touch build/site/.nojekyll
 

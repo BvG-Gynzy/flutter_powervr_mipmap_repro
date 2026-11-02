@@ -33,7 +33,15 @@ Open `http://<host>:8080/` on the device. The index links all four variants:
 
 `?noMipmaps=1` makes `web/flutter_bootstrap.js` patch `CanvasKit.Canvas.prototype.drawImageRectOptions` to always pass `MipmapMode.None`.
 
+Two more variants, requested in [flutter/flutter#194283](https://github.com/flutter/flutter/issues/194283), leave `drawImageRectOptions` untouched so mipmaps stay on:
+
+- `?mipGeneration=skip` (variant A): WebGL's `generateMipmap` does nothing, so textures keep their mipmapped allocation but no mips are generated.
+- `?mipGeneration=finish` (variant B): calls `gl.finish()` before each `generateMipmap`.
+
+Add `cycle=0` (e.g. `?cycle=0` or `?mipGeneration=skip&cycle=0`) to stay on the first background.
+
 The panel in the bottom-left corner shows:
+- the `generateMipmap` variant, the number of backgrounds shown and the number of `generateMipmap` calls so far;
 - the Flutter version and the WebGL renderer;
 - whether the patch is active;
 - controls for `FilterQuality`, the number of stacked images and cycling.
