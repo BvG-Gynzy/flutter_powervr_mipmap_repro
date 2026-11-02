@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:ui' as ui;
@@ -42,6 +43,7 @@ class _ReproPageState extends State<ReproPage> {
   final String _webGlRenderer = _readWebGlRenderer();
   final bool _mipmapsDisabled = _readMipmapsDisabled();
   final String _mipGeneration = _readMipGeneration();
+  final String? _previousRun = _readPreviousRun();
 
   final List<Uint8List> _images = [];
   int _current = 0;
@@ -114,6 +116,7 @@ class _ReproPageState extends State<ReproPage> {
                   : 'drawImageRectOptions unpatched',
             ),
             Text('generateMipmap: $_mipGeneration'),
+            Text('Previous run: ${_previousRun ?? 'none'}'),
             Text(
               'Backgrounds shown: $_backgroundsShown · '
               'generateMipmap calls: ${_readGenerateMipmapCalls()}',
@@ -156,13 +159,16 @@ class _ReproPageState extends State<ReproPage> {
 
   Future<void> _generateImages() async {
     for (var index = 0; index < _imageCount; index++) {
+      _setStage('generating background ${index + 1}/$_imageCount');
       final bytes = await _generatePng(index);
       if (!mounted) {
         return;
       }
       setState(() => _images.add(bytes));
     }
+    _setStage('all backgrounds generated, drawing background 1');
     setState(() => _backgroundsShown = 1);
+    _recordBackgroundDrawn();
     _setCycling(_cycling);
   }
 
@@ -171,13 +177,24 @@ class _ReproPageState extends State<ReproPage> {
     _cycleTimer = cycling
         ? Timer.periodic(
             const Duration(seconds: 1),
-            (_) => setState(() {
-              _current = (_current + 1) % _imageCount;
-              _backgroundsShown++;
-            }),
+            (_) {
+              setState(() {
+                _current = (_current + 1) % _imageCount;
+                _backgroundsShown++;
+              });
+              _recordBackgroundDrawn();
+            },
           )
         : null;
     setState(() => _cycling = cycling);
+  }
+
+  /// Records the stage once the frame showing the current background is done.
+  void _recordBackgroundDrawn() {
+    final shown = _backgroundsShown;
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _setStage('background $shown drawn'),
+    );
   }
 }
 
@@ -270,4 +287,27 @@ int _readGenerateMipmapCalls() {
           .getProperty<JSNumber?>('__repro_generate_mipmap_calls'.toJS)
           ?.toDartInt ??
       0;
+}
+
+void _setStage(String stage) {
+  final setStage = web.window.getProperty<JSFunction?>(
+    '__repro_set_stage'.toJS,
+  );
+  setStage?.callAsFunction(null, stage.toJS);
+}
+
+/// Summarises the previous page load recorded by `flutter_bootstrap.js`.
+String? _readPreviousRun() {
+  final json = web.window
+      .getProperty<JSString?>('__repro_previous_run'.toJS)
+      ?.toDart;
+  if (json == null) {
+    return null;
+  }
+  final run = (jsonDecode(json) as Map).cast<String, Object?>();
+  final allocations = (run['mipmappedAllocations'] as List?) ?? const [];
+  return '${run['url']} · reached "${run['stage']}" · '
+      'generateMipmap calls: ${run['generateMipmapCalls']} · '
+      'mipmapped allocations: ${allocations.length}'
+      '${allocations.isEmpty ? '' : ' (${allocations.first})'}';
 }

@@ -42,6 +42,7 @@ Add `cycle=0` (e.g. `?cycle=0` or `?mipGeneration=skip&cycle=0`) to stay on the 
 
 The panel in the bottom-left corner shows:
 - the `generateMipmap` variant, the number of backgrounds shown and the number of `generateMipmap` calls so far;
+- the previous page load, saved in `localStorage` so it survives a crash: how far it got, its `generateMipmap` calls and its mipmapped texture allocations (`texStorage2D` with more than one level). Reopen the page after a black screen to read it;
 - the Flutter version and the WebGL renderer;
 - whether the patch is active;
 - controls for `FilterQuality`, the number of stacked images and cycling.

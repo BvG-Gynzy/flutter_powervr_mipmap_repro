@@ -39,6 +39,8 @@ function wrapGenerateMipmap() {
     const generateMipmap = context.prototype.generateMipmap;
     context.prototype.generateMipmap = function (target) {
       window.__repro_generate_mipmap_calls++;
+      run.generateMipmapCalls++;
+      saveRun();
       if (mode === "skip") {
         return;
       }
@@ -47,9 +49,57 @@ function wrapGenerateMipmap() {
       }
       return generateMipmap.call(this, target);
     };
+    const texStorage2D = context.prototype.texStorage2D;
+    if (texStorage2D) {
+      context.prototype.texStorage2D = function (target, levels, internalFormat, width, height) {
+        if (levels > 1) {
+          run.mipmappedAllocations.push(`${width}x${height}, ${levels} levels`);
+          saveRun();
+        }
+        return texStorage2D.apply(this, arguments);
+      };
+    }
   }
 }
 
+/**
+ * Records this page load in `localStorage` as it goes, so the numbers survive
+ * the GPU process restart that blacks out the screen. The previous page load's
+ * record is published as `window.__repro_previous_run` (JSON) for the panel.
+ */
+const runStorageKey = "repro_run";
+const run = {
+  url: window.location.pathname + window.location.search,
+  startedAt: new Date().toISOString(),
+  stage: "loading",
+  generateMipmapCalls: 0,
+  mipmappedAllocations: [],
+};
+
+function saveRun() {
+  try {
+    localStorage.setItem(runStorageKey, JSON.stringify(run));
+  } catch (e) {
+    // Storage unavailable: the panel then has no previous run to show.
+  }
+}
+
+function startRun() {
+  try {
+    window.__repro_previous_run = localStorage.getItem(runStorageKey);
+  } catch (e) {
+    window.__repro_previous_run = null;
+  }
+  saveRun();
+}
+
+/** Called by the app to record how far it got. */
+window.__repro_set_stage = function (stage) {
+  run.stage = stage;
+  saveRun();
+};
+
+startRun();
 wrapGenerateMipmap();
 
 _flutter.loader.load({
