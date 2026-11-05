@@ -51,6 +51,8 @@ Switching to `none` or `low` turns mipmaps off without the patch. `Stacked image
 
 Each page load also keeps a timestamped log in `localStorage`: the app's progress, `generateMipmap` calls, mipmapped allocations and WebGL context losses. It survives the black screen; the index page lists the last 10 runs, so open the index page after a crash to read it.
 
+`mip_probe.html` is a standalone WebGL2 page from [flutter/flutter#194283](https://github.com/flutter/flutter/issues/194283#issuecomment-6641017256) that makes the same GL calls as CanvasKit, without Flutter or Skia, one case per page load. The index links it.
+
 The device must reach the host, for example over the same network, or upload `build/site` to any static host.
 
 ## Draft issue for flutter/flutter

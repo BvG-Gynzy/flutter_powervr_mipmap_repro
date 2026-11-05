@@ -26,6 +26,7 @@ done
     echo "<li>Flutter $version: <a href=\"$version/\">default</a> · <a href=\"$version/?noMipmaps=1\">mipmaps disabled</a> · <a href=\"$version/?mipGeneration=skip\">generateMipmap skipped (A)</a> · <a href=\"$version/?mipGeneration=finish\">gl.finish() before generateMipmap (B)</a></li>"
   done
   echo '</ul><p>Add <code>&amp;cycle=0</code> (or <code>?cycle=0</code>) to stay on the first background.</p>'
+  echo '<p><a href="mip_probe.html">WebGL2 mipmapped-copy probe</a>: the same GL calls without Flutter or Skia (from <a href="https://github.com/flutter/flutter/issues/194283#issuecomment-6641017256">flutter/flutter#194283</a>).</p>'
   cat <<'HTML'
 <h2>Recorded runs on this device</h2>
 <p>Each page load records what it did in <code>localStorage</code>, so it survives a black screen. Newest first. <button id="clear">Clear</button></p>
@@ -49,6 +50,7 @@ done
 </script>
 HTML
 } > build/site/index.html
+cp mip_probe.html build/site/
 touch build/site/.nojekyll
 
 echo "Built into build/site. Serve with: python3 -m http.server 8080 --directory build/site"
